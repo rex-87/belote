@@ -207,7 +207,24 @@ class BelotePack(Pack):
                 ScorePack.append(CardObject)              
 
         return ScorePack
-                
+
+    def ToScorePack(self, Equipe = None):        
+
+        PlayedPack = self.GetPlayedPack()    
+        
+        for i in range(len(PlayedPack)):
+            # check state is PLAYEDx
+            CurrentState = PlayedPack[i].GetState()
+            for e in range(PlayedRange.Max):         
+                if CurrentState == PlayedDict[e]:
+                    break
+            else:
+                raise BeloteException('State {!r} is unexpected'.format(CurrentState))
+            
+            PlayedPack[i].SetState(EquipeDict[Equipe])
+            
+        self.PlayedList = []
+        
 class PlayerPackList(list):
     def __init__(self, BelotePackObject = None):
         list.__init__(self)
@@ -231,47 +248,17 @@ class PlayerPackList(list):
         
         self[Player][PlayerPackIndex].SetState('PLAYED{}'.format(PlayedListSize))
         PlayedList.append(None)
-
-class PlayedPackList(list):
-    def __init__(self, BelotePackObject = None):
-        list.__init__(self)
-        self.BelotePackObject = BelotePackObject
-    
-        for j in range(EquipeRange.Max):
-            self.append(BelotePackObject.GetScorePack(j))
-            
-    def ToScorePack(self, Equipe = None):        
-
-        PlayedPack = self.BelotePackObject.GetPlayedPack()    
-        
-        for i in range(len(PlayedPack)):
-            # check state is PLAYEDx
-            CurrentState = PlayedPack[i].GetState()
-            for e in range(PlayedRange.Max):         
-                if CurrentState == PlayedDict[e]:
-                    break
-            else:
-                raise BeloteException('State {!r} is unexpected'.format(CurrentState))
-            
-            PlayedPack[i].SetState(EquipeDict[Equipe])
         
 class Belote(object):
     def __init__(self):        
         
         BelotePackObject = BelotePack()
 
-        print BelotePackObject
-
         BelotePackObject.Shuffle()
 
-        print BelotePackObject
-
         BelotePackObject.Deal()
-
-        print BelotePackObject
         
         PlayerPackListObject = PlayerPackList(BelotePackObject)
-        
         PlayerPackListObject.ToPlayedPack(3, 0)
         PlayerPackListObject.ToPlayedPack(0, 1)
         PlayerPackListObject.ToPlayedPack(1, 2)
@@ -279,10 +266,8 @@ class Belote(object):
         
         print BelotePackObject
 
-        PlayedPackListObject = PlayedPackList(BelotePackObject)
+        BelotePackObject.ToScorePack(0)
         
-        PlayedPackListObject.ToScorePack(0)
-        
-        print BelotePackObject
+        print BelotePackObject      
         
 BeloteObject = Belote()
