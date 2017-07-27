@@ -122,6 +122,8 @@ class Pack(list):
         return ReprOut
 
     def __str__(self):
+        if self == []:
+            return 'EMPTY' 
         ReprOut = ''
         for i, Card in enumerate(self):
             ReprOut += '{!r:>02}: {!s}\n'.format(i, Card)
@@ -137,6 +139,7 @@ class BelotePack(Pack):
                 self.append(CardObject)
                 
         self.PlayedList = []
+        self.Atout = None
         
     def Shuffle(self):
         for i in range(1000):
@@ -156,6 +159,7 @@ class BelotePack(Pack):
         
         RandInt = random.randrange(0, PlayerRange.Max)
         self[PlayerRange.Max*3+PlayerRange.Max*2].SetState(PlayerDict[RandInt])
+        self.Atout = self[PlayerRange.Max*3+PlayerRange.Max*2].GetSuit()
         
         i = PlayerRange.Max*3+PlayerRange.Max*2+1
         while i < SuitRange.Max*NumberRange.Max:
@@ -214,7 +218,48 @@ class BelotePack(Pack):
         
         PlayerPack[PlayerPackIndex].SetState('PLAYED{}'.format(PlayedListSize))
         self.PlayedList.append(None)        
+
+    def CheckPlayerMove(self, Player = None, PlayerPackIndex = None):
         
+        PlayerPack = self.GetPlayerPack(Player)
+        
+        CardToPlay = PlayerPack[PlayerPackIndex]
+        
+        PlayedPack = self.GetPlayedPack()
+        
+        # check playing move is allowed
+        if PlayedPack != []:
+            for card in PlayedPack:
+                if card.GetSuit() == self.Atout:
+                    CouleurDemandee = self.Atout
+                    break
+            else:
+                CouleurDemandee = PlayedPack[0].GetSuit()
+
+            if CardToPlay.GetSuit() == CouleurDemandee:
+                # print "C'est la couleur demandee!",
+                return True
+            else:            
+                HasCouleurDemandee = self.HasCouleurDemandee(Player, CouleurDemandee)
+                if HasCouleurDemandee:
+                    # print 'Il faut jouer la couleur demandee!',              
+                    return False
+                else:
+                    if CardToPlay.GetSuit() == self.Atout:
+                        # print "C'est de l'atout!",
+                        return True
+                    else:                    
+                        HasAtout = self.HasAtout(Player)
+                        if HasAtout:
+                            # print "Il faut jouer atout!",                 
+                            return False
+                        else:
+                            # print "Il faut se defausser!",                  
+                            return True
+
+        else:
+            return True       
+            
     def GetScorePack(self, Equipe = None):
         
         ScorePack = Pack()
@@ -241,7 +286,25 @@ class BelotePack(Pack):
             PlayedPack[i].SetState(EquipeDict[Equipe])
             
         self.PlayedList = []
+
+    def HasCouleurDemandee(self, Player = None, CouleurDemandee = None):
+        PlayerPack = self.GetPlayerPack(Player)
         
+        for card in PlayerPack:
+            if card.GetSuit() == CouleurDemandee:
+                return True
+        else:
+            return False
+
+    def HasAtout(self, Player = None):
+        PlayerPack = self.GetPlayerPack(Player)
+        
+        for card in PlayerPack:
+            if card.GetSuit() == self.Atout:
+                return True
+        else:
+            return False
+            
 class Belote(object):
     def __init__(self):        
         
@@ -249,19 +312,29 @@ class Belote(object):
 
         BelotePackObject.Shuffle()
 
-        BelotePackObject.Deal()
+        BelotePackObject.Deal(DealingPlayer = None)
 
         print BelotePackObject
         
-        BelotePackObject.ToPlayedPack(0, 1)
-        BelotePackObject.ToPlayedPack(1, 2)
-        BelotePackObject.ToPlayedPack(2, 3)
-        BelotePackObject.ToPlayedPack(3, 4)
+        print 'Atout:', Card.SuitDict[BelotePackObject.Atout]
 
-        print BelotePackObject        
+        for t in range(8): # that many rounds
         
-        BelotePackObject.ToScorePack(0)
+            print 'Tour {} ----------------------------'.format(t+1)
+            
+            for j in range(PlayedRange.Max): # for each player. TODO: index qui depend du DealingPlayer
+                
+                print PlayerDict[j]
+                
+                PlayerPack = BelotePackObject.GetPlayerPack(j)
+                for PlayerPackIndex, card in enumerate(PlayerPack): 
+                    if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex): # premiere carte qui est valide
+                        BelotePackObject.ToPlayedPack(j, PlayerPackIndex) # joue la
+                        break
+                print BelotePackObject.GetPlayedPack()      
+            
+            BelotePackObject.ToScorePack(0) # mets les cartes jouees dans la pile des scores
         
-        print BelotePackObject
+        # print BelotePackObject
         
 BeloteObject = Belote()
