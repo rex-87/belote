@@ -53,10 +53,10 @@ class Card(object):
     ]
 
     SuitDict = {
-        0:'Pique',
-        1:'Coeur',
-        2:'Carrx',
-        3:'Trefl',
+        0:'Pique  ',
+        1:'Coeur  ',
+        2:'Carreau',
+        3:'Trefle ',
     }
     
     NumberDict = {
@@ -69,11 +69,23 @@ class Card(object):
         6:'R',
         7:'A',
     }
+
+    NumberToValue = {
+        '7' : { 'NORMAL': 0, 'ATOUT': 0 },
+        '8' : { 'NORMAL': 1, 'ATOUT': 1 },
+        '9' : { 'NORMAL': 2, 'ATOUT': 6 },
+        '10': { 'NORMAL': 6, 'ATOUT': 4 },
+        'V' : { 'NORMAL': 3, 'ATOUT': 7 },
+        'D' : { 'NORMAL': 4, 'ATOUT': 2 },
+        'R' : { 'NORMAL': 5, 'ATOUT': 3 },
+        'A' : { 'NORMAL': 7, 'ATOUT': 5 },
+    }
         
     def __init__(self, Number = None, Suit = None, State = 'UNDEALT'):
         self.Number = None
         self.Suit = None
         self.State = None
+        self.Value = None
 
         self.SetNumber(Number)
         self.SetSuit(Suit)
@@ -111,6 +123,14 @@ class Card(object):
             raise BeloteException('State {!r} is not a valid state. Valid States = {}'.format(State, self.StateList))
         self.State = State
 
+    def GetValue(self, bAtout = False):
+        NumberString = self.NumberDict[self.GetNumber()]
+        
+        if bAtout:
+            return self.NumberToValue[NumberString]['ATOUT']
+        else:
+            return self.NumberToValue[NumberString]['NORMAL']
+            
 class Pack(list):
     def __init__(self):
         list.__init__(self)
@@ -140,6 +160,8 @@ class BelotePack(Pack):
                 
         self.PlayedList = []
         self.Atout = None
+        self.DealingPlayer = None
+        self.FirstPlayer = None
         
     def Shuffle(self):
         for i in range(1000):
@@ -148,14 +170,30 @@ class BelotePack(Pack):
             self[0] = self[RandInt]
             self[RandInt] = temp
             
-    def Deal(self):
-        for j in range(PlayerRange.Max):
-            for i in range(3):
-                self[j*3+i].SetState(PlayerDict[j])
+    def Deal(self, DealingPlayer = None):
+        if DealingPlayer is None:
+            raise BeloteException('DealingPlayer parameter cannot be None')
+        
+        self.DealingPlayer = DealingPlayer
+        self.FirstPlayer = (self.DealingPlayer + 1)%PlayedRange.Max
+        
+        i = 0
+        
+        while i < PlayerRange.Max*3:
+            for j_ in range(PlayerRange.Max):
+                j = (DealingPlayer + j_ + 1)%PlayerRange.Max
+                for u in range(3):
+                    self[i+u].SetState(PlayerDict[j])
+                else:
+                    i += 3
 
-        for j in range(PlayerRange.Max):
-            for i in range(2):
-                self[PlayerRange.Max*3+j*2+i].SetState(PlayerDict[j])
+        while i < PlayerRange.Max*3 + PlayerRange.Max*2:            
+            for j_ in range(PlayerRange.Max):
+                j = (DealingPlayer + j_ + 1)%PlayerRange.Max        
+                for u in range(2):              
+                    self[i+u].SetState(PlayerDict[j])
+                else:
+                    i += 2                    
         
         RandInt = random.randrange(0, PlayerRange.Max)
         self[PlayerRange.Max*3+PlayerRange.Max*2].SetState(PlayerDict[RandInt])
@@ -163,7 +201,8 @@ class BelotePack(Pack):
         
         i = PlayerRange.Max*3+PlayerRange.Max*2+1
         while i < SuitRange.Max*NumberRange.Max:
-            for j in range(PlayerRange.Max):
+            for j_ in range(PlayerRange.Max):
+                j = (DealingPlayer + j_ + 1)%PlayerRange.Max            
                 for u in range(3):             
                     if j != RandInt or u != 2:                     
                         self[i+u].SetState(PlayerDict[j])
@@ -174,6 +213,9 @@ class BelotePack(Pack):
                     i += 3
     
     def GetPlayerPack(self, Player = None):
+        if Player is None:
+            raise BeloteException('Player parameter cannot be None')
+        
         PlayerPack = Pack()
         for CardObject in self:
             if CardObject.GetState() == PlayerDict[Player]:
@@ -304,7 +346,44 @@ class BelotePack(Pack):
                 return True
         else:
             return False
+  
+    def GetWinningPlayedPackIndex(self):
+        PlayedPack = self.GetPlayedPack() 
+        
+        WinningPlayedPackIndex = 0
+        FirstCardSuit = PlayedPack[0].GetSuit()
+        MaxValue = PlayedPack[0].GetValue(FirstCardSuit == self.Atout)    
+        bAtoutPlayed = (FirstCardSuit == self.Atout)
+        for PlayedPackIndex_, card in enumerate(PlayedPack[1:]):
             
+            PlayedPackIndex = PlayedPackIndex_ + 1
+            
+            CardSuit = card.GetSuit()
+            if bAtoutPlayed:
+                if CardSuit != self.Atout:
+                    continue
+                else:
+                    CardValue = card.GetValue(bAtout = True)
+                    if CardValue > MaxValue:
+                        MaxValue = CardValue
+                        WinningPlayedPackIndex = PlayedPackIndex                   
+            else:
+                if CardSuit == self.Atout:
+                    bAtoutPlayed = True
+                    CardValue = card.GetValue(bAtout = True)
+                    MaxValue = CardValue
+                    WinningPlayedPackIndex = PlayedPackIndex
+                else:
+                    if CardSuit != FirstCardSuit:
+                        continue
+                    else:
+                        CardValue = card.GetValue(bAtout = False)
+                        if CardValue > MaxValue:
+                            MaxValue = CardValue
+                            WinningPlayedPackIndex = PlayedPackIndex
+        
+        return WinningPlayedPackIndex
+    
 class Belote(object):
     def __init__(self):        
         
@@ -312,7 +391,7 @@ class Belote(object):
 
         BelotePackObject.Shuffle()
 
-        BelotePackObject.Deal(DealingPlayer = None)
+        BelotePackObject.Deal(DealingPlayer = 3)
 
         print BelotePackObject
         
@@ -322,16 +401,25 @@ class Belote(object):
         
             print 'Tour {} ----------------------------'.format(t+1)
             
-            for j in range(PlayedRange.Max): # for each player. TODO: index qui depend du DealingPlayer
+            for j_ in range(PlayedRange.Max): # for each player. TODO: index qui depend du DealingPlayer
+                
+                j = (BelotePackObject.FirstPlayer + j_)%PlayerRange.Max
                 
                 print PlayerDict[j]
                 
                 PlayerPack = BelotePackObject.GetPlayerPack(j)
+                print PlayerPack
+                print "Tapis:"
                 for PlayerPackIndex, card in enumerate(PlayerPack): 
                     if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex): # premiere carte qui est valide
                         BelotePackObject.ToPlayedPack(j, PlayerPackIndex) # joue la
                         break
-                print BelotePackObject.GetPlayedPack()      
+                print BelotePackObject.GetPlayedPack()
+            
+            WinningPlayedPackIndex = BelotePackObject.GetWinningPlayedPackIndex()
+            print 'WinningPlayer:', WinningPlayedPackIndex
+            
+            BelotePackObject.FirstPlayer = (BelotePackObject.FirstPlayer + WinningPlayedPackIndex)%PlayerRange.Max            
             
             BelotePackObject.ToScorePack(0) # mets les cartes jouees dans la pile des scores
         
