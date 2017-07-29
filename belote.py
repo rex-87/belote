@@ -11,7 +11,7 @@ class Range(object):
 NumberRange = Range(0, 8) 
 SuitRange = Range(0, 4)
 PlayerRange = Range(0, 4)
-PlayedRange = Range(0, 4)
+TapisRange = Range(0, 4)
 EquipeRange = Range(0, 2)
 
 PlayerDict = {
@@ -21,11 +21,11 @@ PlayerDict = {
     3:'J4',
 }
 
-PlayedDict = {
-    0:'PLAYED0',
-    1:'PLAYED1',
-    2:'PLAYED2',
-    3:'PLAYED3',
+TapisDict = {
+    0:'TAPIS0',
+    1:'TAPIS1',
+    2:'TAPIS2',
+    3:'TAPIS3',
 }
 
 EquipeDict = {
@@ -44,10 +44,10 @@ class Card(object):
         'J2',
         'J3',
         'J4',
-        'PLAYED0',
-        'PLAYED1',
-        'PLAYED2',
-        'PLAYED3',
+        'TAPIS0',
+        'TAPIS1',
+        'TAPIS2',
+        'TAPIS3',
         'SCORE1',
         'SCORE2',
     ]
@@ -80,7 +80,18 @@ class Card(object):
         'R' : { 'NORMAL': 5, 'ATOUT': 3 },
         'A' : { 'NORMAL': 7, 'ATOUT': 5 },
     }
-        
+
+    NumberToPoints = {
+        '7' : { 'NORMAL': 0, 'ATOUT': 0 },
+        '8' : { 'NORMAL': 0, 'ATOUT': 0 },
+        '9' : { 'NORMAL': 0, 'ATOUT':14 },
+        '10': { 'NORMAL':10, 'ATOUT':10 },
+        'V' : { 'NORMAL': 2, 'ATOUT':20 },
+        'D' : { 'NORMAL': 3, 'ATOUT': 3 },
+        'R' : { 'NORMAL': 4, 'ATOUT': 4 },
+        'A' : { 'NORMAL':11, 'ATOUT':11 },
+    }
+    
     def __init__(self, Number = None, Suit = None, State = 'UNDEALT'):
         self.Number = None
         self.Suit = None
@@ -130,6 +141,14 @@ class Card(object):
             return self.NumberToValue[NumberString]['ATOUT']
         else:
             return self.NumberToValue[NumberString]['NORMAL']
+
+    def GetPoints(self, bAtout = False):
+        NumberString = self.NumberDict[self.GetNumber()]
+        
+        if bAtout:
+            return self.NumberToPoints[NumberString]['ATOUT']
+        else:
+            return self.NumberToPoints[NumberString]['NORMAL']
             
 class Pack(list):
     def __init__(self):
@@ -158,10 +177,11 @@ class BelotePack(Pack):
                 CardObject = Card(Number = Number, Suit = Suit)
                 self.append(CardObject)
                 
-        self.PlayedList = []
+        self.TapisList = []
         self.Atout = None
         self.DealingPlayer = None
         self.FirstPlayer = None
+        self.DixDeDer = None
         
     def Shuffle(self):
         for i in range(1000):
@@ -175,7 +195,7 @@ class BelotePack(Pack):
             raise BeloteException('DealingPlayer parameter cannot be None')
         
         self.DealingPlayer = DealingPlayer
-        self.FirstPlayer = (self.DealingPlayer + 1)%PlayedRange.Max
+        self.FirstPlayer = (self.DealingPlayer + 1)%TapisRange.Max
         
         i = 0
         
@@ -222,31 +242,31 @@ class BelotePack(Pack):
                 PlayerPack.append(CardObject)
         return PlayerPack
 
-    def GetPlayedPack(self):
+    def GetTapisPack(self):
         
-        PlayedPack = Pack()
+        TapisPack = Pack()
         
         for CardObject in self:
-            if CardObject.GetState() == 'PLAYED0':
-                PlayedPack.append(CardObject)   
+            if CardObject.GetState() == 'TAPIS0':
+                TapisPack.append(CardObject)   
 
         for CardObject in self:
-            if CardObject.GetState() == 'PLAYED1':
-                PlayedPack.append(CardObject)               
+            if CardObject.GetState() == 'TAPIS1':
+                TapisPack.append(CardObject)               
                 
         for CardObject in self:
-            if CardObject.GetState() == 'PLAYED2':
-                PlayedPack.append(CardObject)             
+            if CardObject.GetState() == 'TAPIS2':
+                TapisPack.append(CardObject)             
                 
         for CardObject in self:
-            if CardObject.GetState() == 'PLAYED3':
-                PlayedPack.append(CardObject)             
+            if CardObject.GetState() == 'TAPIS3':
+                TapisPack.append(CardObject)             
 
-        return PlayedPack
+        return TapisPack
 
-    def ToPlayedPack(self, Player = None, PlayerPackIndex = None):        
+    def ToTapisPack(self, Player = None, PlayerPackIndex = None):        
 
-        PlayedListSize = len(self.PlayedList)
+        TapisListSize = len(self.TapisList)
         
         PlayerPack = self.GetPlayerPack(Player)
         
@@ -258,8 +278,8 @@ class BelotePack(Pack):
         else:
             raise BeloteException('State {!r} is unexpected'.format(CurrentState))
         
-        PlayerPack[PlayerPackIndex].SetState('PLAYED{}'.format(PlayedListSize))
-        self.PlayedList.append(None)        
+        PlayerPack[PlayerPackIndex].SetState('TAPIS{}'.format(TapisListSize))
+        self.TapisList.append(None)        
 
     def CheckPlayerMove(self, Player = None, PlayerPackIndex = None):
         
@@ -267,16 +287,11 @@ class BelotePack(Pack):
         
         CardToPlay = PlayerPack[PlayerPackIndex]
         
-        PlayedPack = self.GetPlayedPack()
+        TapisPack = self.GetTapisPack()
         
         # check playing move is allowed
-        if PlayedPack != []:
-            for card in PlayedPack:
-                if card.GetSuit() == self.Atout:
-                    CouleurDemandee = self.Atout
-                    break
-            else:
-                CouleurDemandee = PlayedPack[0].GetSuit()
+        if TapisPack != []:
+            CouleurDemandee = TapisPack[0].GetSuit()
 
             if CardToPlay.GetSuit() == CouleurDemandee:
                 # print "C'est la couleur demandee!",
@@ -314,20 +329,20 @@ class BelotePack(Pack):
 
     def ToScorePack(self, Equipe = None):        
 
-        PlayedPack = self.GetPlayedPack()    
+        TapisPack = self.GetTapisPack()    
         
-        for i in range(len(PlayedPack)):
-            # check state is PLAYEDx
-            CurrentState = PlayedPack[i].GetState()
-            for e in range(PlayedRange.Max):         
-                if CurrentState == PlayedDict[e]:
+        for i in range(len(TapisPack)):
+            # check state is TAPISx
+            CurrentState = TapisPack[i].GetState()
+            for e in range(TapisRange.Max):         
+                if CurrentState == TapisDict[e]:
                     break
             else:
                 raise BeloteException('State {!r} is unexpected'.format(CurrentState))
             
-            PlayedPack[i].SetState(EquipeDict[Equipe])
+            TapisPack[i].SetState(EquipeDict[Equipe])
             
-        self.PlayedList = []
+        self.TapisList = []
 
     def HasCouleurDemandee(self, Player = None, CouleurDemandee = None):
         PlayerPack = self.GetPlayerPack(Player)
@@ -347,32 +362,32 @@ class BelotePack(Pack):
         else:
             return False
   
-    def GetWinningPlayedPackIndex(self):
-        PlayedPack = self.GetPlayedPack() 
+    def GetWinningTapisPackIndex(self):
+        TapisPack = self.GetTapisPack() 
         
-        WinningPlayedPackIndex = 0
-        FirstCardSuit = PlayedPack[0].GetSuit()
-        MaxValue = PlayedPack[0].GetValue(FirstCardSuit == self.Atout)    
-        bAtoutPlayed = (FirstCardSuit == self.Atout)
-        for PlayedPackIndex_, card in enumerate(PlayedPack[1:]):
+        WinningTapisPackIndex = 0
+        FirstCardSuit = TapisPack[0].GetSuit()
+        MaxValue = TapisPack[0].GetValue(FirstCardSuit == self.Atout)    
+        bAtoutJoue = (FirstCardSuit == self.Atout)
+        for TapisPackIndex_, card in enumerate(TapisPack[1:]):
             
-            PlayedPackIndex = PlayedPackIndex_ + 1
+            TapisPackIndex = TapisPackIndex_ + 1
             
             CardSuit = card.GetSuit()
-            if bAtoutPlayed:
+            if bAtoutJoue:
                 if CardSuit != self.Atout:
                     continue
                 else:
                     CardValue = card.GetValue(bAtout = True)
                     if CardValue > MaxValue:
                         MaxValue = CardValue
-                        WinningPlayedPackIndex = PlayedPackIndex                   
+                        WinningTapisPackIndex = TapisPackIndex                   
             else:
                 if CardSuit == self.Atout:
-                    bAtoutPlayed = True
+                    bAtoutJoue = True
                     CardValue = card.GetValue(bAtout = True)
                     MaxValue = CardValue
-                    WinningPlayedPackIndex = PlayedPackIndex
+                    WinningTapisPackIndex = TapisPackIndex
                 else:
                     if CardSuit != FirstCardSuit:
                         continue
@@ -380,10 +395,36 @@ class BelotePack(Pack):
                         CardValue = card.GetValue(bAtout = False)
                         if CardValue > MaxValue:
                             MaxValue = CardValue
-                            WinningPlayedPackIndex = PlayedPackIndex
+                            WinningTapisPackIndex = TapisPackIndex
         
-        return WinningPlayedPackIndex
+        return WinningTapisPackIndex
     
+    def Player2Equipe(self, Player = None):
+        if Player is None:
+            raise BeloteException('Player parameter cannot be None')
+
+        if Player == 0 or Player == 2:
+            return 0
+        elif Player == 1 or Player == 3:
+            return 1
+        else:
+            raise BeloteException('Player parameter must be 0-3. Player = {!r}'.format(Player))
+    
+    def GetScore(self, Equipe = None):
+        ScorePack = self.GetScorePack(Equipe)
+        
+        Score = 0
+        for card in ScorePack:
+            CardSuit = card.GetSuit()
+            CardValue = card.GetPoints(CardSuit == self.Atout)
+            Score += CardValue
+            
+        # Dix de der
+        if self.DixDeDer == Equipe:
+            Score += 10
+            
+        return Score
+
 class Belote(object):
     def __init__(self):        
         
@@ -393,7 +434,7 @@ class Belote(object):
 
         BelotePackObject.Deal(DealingPlayer = 3)
 
-        print BelotePackObject
+        # print BelotePackObject
         
         print 'Atout:', Card.SuitDict[BelotePackObject.Atout]
 
@@ -401,7 +442,7 @@ class Belote(object):
         
             print 'Tour {} ----------------------------'.format(t+1)
             
-            for j_ in range(PlayedRange.Max): # for each player. TODO: index qui depend du DealingPlayer
+            for j_ in range(TapisRange.Max): # for each player. TODO: index qui depend du DealingPlayer
                 
                 j = (BelotePackObject.FirstPlayer + j_)%PlayerRange.Max
                 
@@ -409,20 +450,32 @@ class Belote(object):
                 
                 PlayerPack = BelotePackObject.GetPlayerPack(j)
                 print PlayerPack
-                print "Tapis:"
                 for PlayerPackIndex, card in enumerate(PlayerPack): 
                     if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex): # premiere carte qui est valide
-                        BelotePackObject.ToPlayedPack(j, PlayerPackIndex) # joue la
+                        BelotePackObject.ToTapisPack(j, PlayerPackIndex) # joue la
                         break
-                print BelotePackObject.GetPlayedPack()
+                print "Tapis:"                        
+                print BelotePackObject.GetTapisPack()
             
-            WinningPlayedPackIndex = BelotePackObject.GetWinningPlayedPackIndex()
-            print 'WinningPlayer:', WinningPlayedPackIndex
+            WinningTapisPackIndex = BelotePackObject.GetWinningTapisPackIndex()
+            print 'WinningPlayer:', WinningTapisPackIndex
             
-            BelotePackObject.FirstPlayer = (BelotePackObject.FirstPlayer + WinningPlayedPackIndex)%PlayerRange.Max            
+            WinningPlayer = (BelotePackObject.FirstPlayer + WinningTapisPackIndex)%PlayerRange.Max
+            BelotePackObject.ToScorePack(BelotePackObject.Player2Equipe(WinningPlayer)) # mets les cartes jouees dans la pile des scores
             
-            BelotePackObject.ToScorePack(0) # mets les cartes jouees dans la pile des scores
-        
+            # Dix de der
+            if t == 7:
+                BelotePackObject.DixDeDer = BelotePackObject.Player2Equipe(WinningPlayer)
+            
+            print "ScorePack1:"
+            print BelotePackObject.GetScorePack(0)
+            print "Score1:", BelotePackObject.GetScore(0)
+            print "ScorePack2:"            
+            print BelotePackObject.GetScorePack(1)
+            print "Score2:", BelotePackObject.GetScore(1)
+            
+            BelotePackObject.FirstPlayer = WinningPlayer
+            
         # print BelotePackObject
         
 BeloteObject = Belote()
