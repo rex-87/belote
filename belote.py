@@ -2,6 +2,7 @@
 import random
 import sys
 import time
+import traceback
 
 Verbose = False
 
@@ -518,31 +519,33 @@ class Belote(object):
                 for j_ in range(TapisRange.Max): # for each player. TODO: index qui depend du DealingPlayer
                     
                     j = (BelotePackObject.FirstPlayer + j_)%PlayerRange.Max
-                  
-                    if Verbose: print PlayerDict[j]
                     
                     PlayerPack = BelotePackObject.GetPlayerPack(j)
                     
-                    if HumanPlayer == j:
-                        print "Tapis: >>>>>>>>>>>>>>>>"                        
-                        print BelotePackObject.GetTapisPack()
-                        print "Votre main:"
-                        print PlayerPack                        
-                        while True:                        
-                            PlayerPackIndex = int(raw_input('? '))
-                            if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex, CheckPlayerMoveVerbose = True): # carte valide ?
-                                BelotePackObject.ToTapisPack(j, PlayerPackIndex) # joue la
-                                break
+                    if HumanPlayer == j:                      
+                        while True:
+                            print "Tapis: >>>>>>>>>>>>>>>>"                        
+                            print BelotePackObject.GetTapisPack()
+                            print "Votre main:"
+                            print PlayerPack                         
+                            try:
+                                PlayerPackIndex = int(raw_input('? '))
+                                if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex, CheckPlayerMoveVerbose = True): # carte valide ?
+                                    BelotePackObject.ToTapisPack(j, PlayerPackIndex) # joue la
+                                    break
+                            except:
+                                traceback.print_exc()                               
                     else:
-                        if Verbose: print PlayerPack                    
+                        if Verbose: print PlayerDict[j]
+                        if Verbose: print PlayerPack
                         for PlayerPackIndex, card in enumerate(PlayerPack):
-                            if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex): # premiere carte qui est valide
+                            if BelotePackObject.CheckPlayerMove(j, PlayerPackIndex, CheckPlayerMoveVerbose = Verbose): # premiere carte qui est valide
                                 BelotePackObject.ToTapisPack(j, PlayerPackIndex) # joue la
-                                # raw_input('PAUSE')
                                 break
 
                 print "Tapis: <<<<<<<<<<<<<<<<"                        
                 print BelotePackObject.GetTapisPack()
+                raw_input('PAUSE')
                                 
                 WinningTapisPackIndex = BelotePackObject.GetWinningTapisPackIndex()                
                 WinningPlayer = (BelotePackObject.FirstPlayer + WinningTapisPackIndex)%PlayerRange.Max
